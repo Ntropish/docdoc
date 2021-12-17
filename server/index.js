@@ -6,9 +6,10 @@ const io = new Server({
 });
 
 const state = {
-  center: [0, 0],
+  center: [300, 300],
   scale: 1,
   strokes: [],
+  lines: [],
   folks: {},
 };
 
@@ -34,7 +35,6 @@ io.on("connection", (socket) => {
   });
   socket.on("self", (self) => {
     state.folks[socket.id] = self;
-    console.log(state);
     updateOthers();
   });
 });

@@ -53,6 +53,7 @@ function App() {
   let [socket, setSocket] = useState();
   let [state, setState] = useState();
   let [dragging, setDragging] = useState();
+  let [dragStart, setDragStart] = useState();
   let [ref, bounds] = useMeasure();
 
   useEffect(() => {
@@ -73,6 +74,7 @@ function App() {
     const left = state.center[0] * state.scale;
     const width = 1000 * state.scale;
     const style = {
+      touchAction: "none",
       maxWidth: "none",
       position: "absolute",
       top: `calc(50% - ${top}px)`,
@@ -97,7 +99,6 @@ function App() {
 
   useEffect(() => {
     if (!socket) return;
-    console.log("user", user);
     socket.emit("self", user);
   }, [user, socket]);
 
@@ -128,22 +129,63 @@ function App() {
 
   const theme = useMemo(() => {
     return createTheme(themeOptions);
-  }, [user]);
+  }, []);
 
   const bind = useGesture({
     onDrag: (dragState) => {
       const { dragging, delta } = dragState;
 
-      setDragging(dragging);
+      if (user.occupation === "mover") {
+        setDragging(dragging);
 
-      const dx = delta[0] / state.scale;
-      const dy = delta[1] / state.scale;
-      socket.emit("move", [dx, dy]);
+        const dx = delta[0] / state.scale;
+        const dy = delta[1] / state.scale;
+        socket.emit("move", [dx, dy]);
 
-      setState((oldState) => ({
-        ...oldState,
-        center: [oldState.center[0] - dx, oldState.center[1] - dy],
-      }));
+        setState((oldState) => ({
+          ...oldState,
+          center: [oldState.center[0] - dx, oldState.center[1] - dy],
+        }));
+      }
+    },
+    onDragStart: (dragStartState) => {
+      if (user.occupation === "liner") {
+        // Stored in screen space, but will be converted to "center" space before sending
+        setDragStart(dragStartState.xy);
+        setDragging(true);
+      }
+    },
+    onDragEnd: (dragStopState) => {
+      if (user.occupation === "liner") {
+        setDragging(false);
+
+        const [dsx, dsy] = dragStart;
+        const [dex, dey] = dragStopState.xy;
+        const [cx, cy] = state.center;
+        const halfWidth = window.innerWidth / 2;
+        const halfHeight = window.innerHeight / 2;
+
+        const line = [
+          [
+            (cx + dsx - halfWidth) * state.scale,
+            (cy - halfHeight + dsy) * state.scale,
+          ],
+          [
+            (cx + dex - halfWidth) * state.scale,
+            (cy - halfHeight + dey) * state.scale,
+          ],
+        ];
+
+        socket.emit("line", line);
+
+        setState((oldState) => {
+          const lines = [...oldState.lines, line];
+          return {
+            ...oldState,
+            lines,
+          };
+        });
+      }
     },
     // onPinch: (state) => doSomethingWith(state),
     // onScroll: (state) => doSomethingWith(state),
@@ -164,10 +206,30 @@ function App() {
     },
   });
 
+  let cursorClass;
+
+  if (user.occupation === "mover") {
+    if (dragging) {
+      cursorClass = "cursor-grabbing";
+    } else {
+      cursorClass = "cursor-grab";
+    }
+  } else {
+    if (dragging) {
+      cursorClass = "cursor-crosshair";
+    } else {
+      cursorClass = "cursor-crosshair";
+    }
+  }
+
+  const lines = state.lines.map((line) => {
+    return <line></line>;
+  });
+
   return (
     <ThemeProvider theme={theme}>
-      <div className="App overflow-hidden">
-        <div {...bind()} className="absolute inset-0">
+      <div className={`App overflow-hidden ${cursorClass}`}>
+        <div {...bind()} className="absolute inset-0 touch-none">
           <img
             ref={ref}
             src="/smol.png"
@@ -175,6 +237,10 @@ function App() {
             style={imgStyle}
             onDragStart={preventDragHandler}
           />
+          <svg>{lines}</svg>
+        </div>
+        <div className="absolute top-0 right-0">
+          {JSON.stringify(state, null, 2)}
         </div>
         <IconButton
           size="large"
@@ -255,6 +321,9 @@ function App() {
                 <ToggleButton value="mover" aria-label="mover">
                   Movement Expert
                 </ToggleButton>
+                <ToggleButton value="liner" aria-label="liner">
+                  Line Drawer
+                </ToggleButton>
               </ToggleButtonGroup>
             </Stack>
           </DraggablePaper>
@@ -302,10 +371,7 @@ function Ball(props) {
 function DraggablePaper(props) {
   const { title, children, ...notChildren } = props;
   return (
-    <Draggable
-      handle=".drag-me"
-      // cancel={'[class*="MuiDialogContent-root"]'}
-    >
+    <Draggable handle=".handle" defaultPosition={{ x: 0, y: 0 }}>
       <Paper
         elevation={4}
         {...notChildren}
@@ -314,14 +380,14 @@ function DraggablePaper(props) {
       >
         <Stack
           direction="row"
-          className="drag-me m-2"
+          className="drag-me m-2 handle"
           spacing={2}
           sx={{ cursor: "grab" }}
         >
           <DragHandleIcon />
           <Typography variant="h6">{title}</Typography>
         </Stack>
-        {children}
+        <div className="draggable-paper-content">{children}</div>
       </Paper>
     </Draggable>
   );

@@ -7,7 +7,7 @@ const io = new Server({
 
 const state = {
   center: [0, 0],
-  radius: 400,
+  scale: 1,
   strokes: [],
 };
 

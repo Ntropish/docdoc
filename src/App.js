@@ -8,6 +8,9 @@ import MenuIcon from "@mui/icons-material/Menu";
 import { AppBar, Toolbar, IconButton, Typography } from "@mui/material";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import useMeasure from "react-use-measure";
+
+import { useGesture } from "@use-gesture/react";
+
 export const themeOptions = {
   palette: {
     type: "dark",
@@ -46,10 +49,13 @@ function App() {
 
   const imgStyle = useMemo(() => {
     if (!state) return {};
+
+    const top = state.center[1] * state.scale;
+    const left = state.center[0] * state.scale;
     const style = {
       position: "absolute",
-      top: `calc(50% - ${state.center[1]}px)`,
-      left: `calc(50% - ${state.center[0]}px)`,
+      top: `calc(50% - ${top}px)`,
+      left: `calc(50% - ${left}px)`,
       width: "1000px",
     };
     if (!dragging) style.transition = "top 200ms ease 100ms";
@@ -65,26 +71,40 @@ function App() {
     return createTheme(themeOptions);
   }, [color]);
 
-  const bind = useDrag((state) => {
-    const {
-      dragging,
-      delta: [dx, dy],
-    } = state;
+  const bind = useDrag();
 
-    console.log(bounds);
+  const bind = useGesture(
+    {
+      onDrag: (state) => {
+        const {
+          dragging,
+          delta: [dx, dy],
+        } = state;
 
-    // const dx = (delta[0] / window.innerWidth) * 100;
-    // const dy = (delta[1] / window.innerHeight) * 100;
+        console.log(bounds);
 
-    setDragging(dragging);
+        // const dx = (delta[0] / window.innerWidth) * 100;
+        // const dy = (delta[1] / window.innerHeight) * 100;
 
-    socket.emit("move", [dx, dy]);
+        setDragging(dragging);
 
-    setState((oldState) => ({
-      ...oldState,
-      center: [oldState.center[0] - dx, oldState.center[1] - dy],
-    }));
-  });
+        socket.emit("move", [dx, dy]);
+
+        setState((oldState) => ({
+          ...oldState,
+          center: [oldState.center[0] - dx, oldState.center[1] - dy],
+        }));
+      },
+      onPinch: (state) => doSomethingWith(state),
+      onScroll: (state) => doSomethingWith(state),
+      onMove: (state) => doSomethingWith(state),
+      onWheel: (state) => doSomethingWith(state),
+      onWheelStart: (state) => doSomethingWith(state),
+      onWheelEnd: (state) => doSomethingWith(state),
+      onHover: (state) => doSomethingWith(state),
+    },
+    config
+  );
 
   return (
     <div className="App overflow-hidden" {...bind()}>

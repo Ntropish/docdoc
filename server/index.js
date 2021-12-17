@@ -13,7 +13,6 @@ const state = {
 };
 
 io.on("connection", (socket) => {
-  console.log(socket);
   const updateOthers = throttle(120, false, (movement) => {
     // sending to all clients except sender
     socket.broadcast.emit("state", state);
@@ -35,7 +34,7 @@ io.on("connection", (socket) => {
   });
   socket.on("self", (self) => {
     state.folks[socket.id] = self;
-
+    console.log(state);
     updateOthers();
   });
 });

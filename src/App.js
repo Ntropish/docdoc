@@ -13,6 +13,8 @@ import {
   Typography,
   Stack,
   Paper,
+  ToggleButton,
+  ToggleButtonGroup,
 } from "@mui/material";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import useMeasure from "react-use-measure";
@@ -39,7 +41,7 @@ export const themeOptions = {
     },
     background: {
       default: "#111",
-      paper: "#433",
+      paper: "#424242",
     },
     text: {
       primary: "rgba(255,255,255,0.8)",
@@ -58,14 +60,11 @@ function App() {
     setSocket(socket);
 
     // client-side
-    socket.on("state", (initState) => {
-      setState(initState);
+    socket.on("state", (newState) => {
+      setState(newState);
+      console.log(newState);
     });
   }, []);
-
-  useEffect(() => {
-    console.log("socket", socket);
-  }, [socket]);
 
   const imgStyle = useMemo(() => {
     if (!state) return {};
@@ -88,31 +87,48 @@ function App() {
   const toggleMenu = () => setMenuOpen(!menuOpen);
   const handleMenuClose = () => setMenuOpen(false);
 
-  const [color, setColor] = useState({ hue: 0, saturation: 70, softness: 50 });
-  const { hue, saturation, softness } = color;
+  const [user, setUser] = useState({
+    hue: 0,
+    saturation: 70,
+    softness: 50,
+    occupation: "mover",
+  });
+  const { hue, saturation, softness, occupation } = user;
+
+  useEffect(() => {
+    if (!socket) return;
+    console.log("user", user);
+    socket.emit("self", user);
+  }, [user, socket]);
 
   const handleChangeHue = (event, hue) => {
-    setColor((old) => ({
+    setUser((old) => ({
       ...old,
       hue,
     }));
   };
   const handleChangeSaturation = (event, saturation) => {
-    setColor((old) => ({
+    setUser((old) => ({
       ...old,
       saturation,
     }));
   };
   const handleChangeSoftness = (event, softness) => {
-    setColor((old) => ({
+    setUser((old) => ({
       ...old,
       softness,
+    }));
+  };
+  const handleChangeOccupation = (event, occupation) => {
+    setUser((old) => ({
+      ...old,
+      occupation,
     }));
   };
 
   const theme = useMemo(() => {
     return createTheme(themeOptions);
-  }, [color]);
+  }, [user]);
 
   const bind = useGesture({
     onDrag: (dragState) => {
@@ -144,7 +160,7 @@ function App() {
       socket.emit("scale", newScale);
     },
     onMove: (hoverState) => {
-      console.log(hoverState);
+      // console.log(hoverState);
     },
   });
 
@@ -172,7 +188,37 @@ function App() {
         </IconButton>
         {menuOpen ? (
           <DraggablePaper title="How Would You Describe Yourself?">
-            <Stack direction="row">
+            <Stack direction="row" spacing={3} justifyContent="center">
+              <Box sx={{ width: "120px" }}>
+                <Typography id="hue-slider">Hue</Typography>
+                <Slider
+                  min={0}
+                  max={360}
+                  valueLabelDisplay="auto"
+                  value={hue}
+                  onChange={handleChangeHue}
+                />
+              </Box>
+              <Box sx={{ width: "120px" }}>
+                <Typography id="color-slider">Colorful</Typography>
+                <Slider
+                  valueLabelDisplay="auto"
+                  value={saturation}
+                  onChange={handleChangeSaturation}
+                />
+              </Box>
+              <Box sx={{ width: "120px" }}>
+                <Typography id="hue-slider">Soft</Typography>
+                <Slider
+                  defaultValue={70}
+                  valueLabelDisplay="auto"
+                  value={softness}
+                  onChange={handleChangeSoftness}
+                />
+              </Box>
+            </Stack>
+
+            <Stack direction="row" spacing={3}>
               <Box sx={{ width: "300px" }}>
                 <Canvas>
                   {/* <FlyControls
@@ -195,48 +241,26 @@ function App() {
                   </EffectComposer>
                 </Canvas>
               </Box>
-              <Stack direction="column">
-                <Box sx={{ width: "100px" }}>
-                  <Typography id="hue-slider">Hue</Typography>
-                  <Slider
-                    min={0}
-                    max={360}
-                    valueLabelDisplay="auto"
-                    value={hue}
-                    onChange={handleChangeHue}
-                  />
-                </Box>
-                <Box>
-                  <Typography id="color-slider">Colorful</Typography>
-                  <Slider
-                    valueLabelDisplay="auto"
-                    value={saturation}
-                    onChange={handleChangeSaturation}
-                  />
-                </Box>
-                <Box>
-                  <Typography id="hue-slider">Soft</Typography>
-                  <Slider
-                    defaultValue={70}
-                    valueLabelDisplay="auto"
-                    value={softness}
-                    onChange={handleChangeSoftness}
-                  />
-                </Box>
-              </Stack>
+
+              <ToggleButtonGroup
+                color="primary"
+                orientation="vertical"
+                value={occupation}
+                exclusive
+                onChange={handleChangeOccupation}
+              >
+                <ToggleButton value="artist" aria-label="artist">
+                  Artist
+                </ToggleButton>
+                <ToggleButton value="mover" aria-label="mover">
+                  Movement Expert
+                </ToggleButton>
+              </ToggleButtonGroup>
             </Stack>
           </DraggablePaper>
         ) : null}
       </div>
     </ThemeProvider>
-  );
-}
-
-function NiceStack(props) {
-  return (
-    <Stack direction={"row"} spacing={2}>
-      {props.children}
-    </Stack>
   );
 }
 

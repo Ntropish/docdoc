@@ -1,16 +1,36 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 
 import "./App.css";
 import { io } from "socket.io-client";
 import Menu from "./Menu";
 import { useDrag } from "@use-gesture/react";
 import MenuIcon from "@mui/icons-material/Menu";
-import { AppBar, Toolbar, IconButton, Typography } from "@mui/material";
+import DragHandleIcon from "@mui/icons-material/DragHandle";
+import {
+  AppBar,
+  Toolbar,
+  IconButton,
+  Typography,
+  Stack,
+  Paper,
+} from "@mui/material";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import useMeasure from "react-use-measure";
 
 import { useGesture } from "@use-gesture/react";
 
+import {
+  EffectComposer,
+  DepthOfField,
+  Bloom,
+  Noise,
+  Vignette,
+} from "@react-three/postprocessing";
+
+import { Slider } from "@mui/material";
+import { Box } from "@mui/system";
+import { Canvas, useFrame } from "@react-three/fiber";
+import Draggable from "react-draggable";
 export const themeOptions = {
   palette: {
     type: "dark",
@@ -19,7 +39,7 @@ export const themeOptions = {
     },
     background: {
       default: "#111",
-      paper: "#222",
+      paper: "#433",
     },
     text: {
       primary: "rgba(255,255,255,0.8)",
@@ -52,13 +72,15 @@ function App() {
 
     const top = state.center[1] * state.scale;
     const left = state.center[0] * state.scale;
+    const width = 1000 * state.scale;
     const style = {
+      maxWidth: "none",
       position: "absolute",
       top: `calc(50% - ${top}px)`,
       left: `calc(50% - ${left}px)`,
-      width: "1000px",
+      width: width + "px",
     };
-    if (!dragging) style.transition = "top 200ms ease 100ms";
+    // if (!dragging) style.transition = "top 200ms ease 100ms";
     return style;
   }, [state]);
 
@@ -67,76 +89,217 @@ function App() {
   const handleMenuClose = () => setMenuOpen(false);
 
   const [color, setColor] = useState({ hue: 0, saturation: 70, softness: 50 });
+  const { hue, saturation, softness } = color;
+
+  const handleChangeHue = (event, hue) => {
+    setColor((old) => ({
+      ...old,
+      hue,
+    }));
+  };
+  const handleChangeSaturation = (event, saturation) => {
+    setColor((old) => ({
+      ...old,
+      saturation,
+    }));
+  };
+  const handleChangeSoftness = (event, softness) => {
+    setColor((old) => ({
+      ...old,
+      softness,
+    }));
+  };
+
   const theme = useMemo(() => {
     return createTheme(themeOptions);
   }, [color]);
 
-  const bind = useDrag();
+  const bind = useGesture({
+    onDrag: (dragState) => {
+      const { dragging, delta } = dragState;
 
-  const bind = useGesture(
-    {
-      onDrag: (state) => {
-        const {
-          dragging,
-          delta: [dx, dy],
-        } = state;
+      setDragging(dragging);
 
-        console.log(bounds);
+      const dx = delta[0] / state.scale;
+      const dy = delta[1] / state.scale;
+      socket.emit("move", [dx, dy]);
 
-        // const dx = (delta[0] / window.innerWidth) * 100;
-        // const dy = (delta[1] / window.innerHeight) * 100;
-
-        setDragging(dragging);
-
-        socket.emit("move", [dx, dy]);
-
-        setState((oldState) => ({
-          ...oldState,
-          center: [oldState.center[0] - dx, oldState.center[1] - dy],
-        }));
-      },
-      onPinch: (state) => doSomethingWith(state),
-      onScroll: (state) => doSomethingWith(state),
-      onMove: (state) => doSomethingWith(state),
-      onWheel: (state) => doSomethingWith(state),
-      onWheelStart: (state) => doSomethingWith(state),
-      onWheelEnd: (state) => doSomethingWith(state),
-      onHover: (state) => doSomethingWith(state),
+      setState((oldState) => ({
+        ...oldState,
+        center: [oldState.center[0] - dx, oldState.center[1] - dy],
+      }));
     },
-    config
-  );
+    // onPinch: (state) => doSomethingWith(state),
+    // onScroll: (state) => doSomethingWith(state),
+    // onMove: (state) => doSomethingWith(state),
+    onWheel: (wheelState) => {
+      const sign = -1 * wheelState.direction[1];
+
+      const newScale = state.scale * (1 + sign * 0.03);
+      setState((oldState) => ({
+        ...oldState,
+        scale: newScale,
+      }));
+
+      socket.emit("scale", newScale);
+    },
+    onMove: (hoverState) => {
+      console.log(hoverState);
+    },
+  });
 
   return (
-    <div className="App overflow-hidden" {...bind()}>
-      <IconButton
-        size="large"
-        edge="start"
-        color="inherit"
-        aria-label="menu"
-        className="absolute top-4 left-4"
-        onClick={toggleMenu}
-      >
-        <MenuIcon />
-      </IconButton>
-      <div className="absolute top-4 right-4 whitespace-pre">
-        {JSON.stringify(state, 0, 2)}
+    <ThemeProvider theme={theme}>
+      <div className="App overflow-hidden">
+        <div {...bind()} className="absolute inset-0">
+          <img
+            ref={ref}
+            src="/smol.png"
+            alt="music score to mark up"
+            style={imgStyle}
+            onDragStart={preventDragHandler}
+          />
+        </div>
+        <IconButton
+          size="large"
+          edge="start"
+          color="inherit"
+          aria-label="menu"
+          className="absolute top-4 left-4"
+          onClick={toggleMenu}
+        >
+          <MenuIcon />
+        </IconButton>
+        {menuOpen ? (
+          <DraggablePaper title="How Would You Describe Yourself?">
+            <Stack direction="row">
+              <Box sx={{ width: "300px" }}>
+                <Canvas>
+                  {/* <FlyControls
+          autoForward={false}
+          dragToLook={true}
+          movementSpeed={3.0}
+          rollSpeed={0.5}
+        /> */}
+                  <ambientLight intensity={0.7} />
+                  <pointLight position={[-200, 200, 100]} />
+                  <Ball hue={hue} saturation={saturation} softness={softness} />
+                  <EffectComposer>
+                    <Noise opacity={0.02} />
+                    <Bloom
+                      luminanceThreshold={1 - softness / 100}
+                      luminanceSmoothing={0.9}
+                      height={70}
+                    />
+                    {/* <Vignette eskil={false} offset={0.1} darkness={1.1} /> */}
+                  </EffectComposer>
+                </Canvas>
+              </Box>
+              <Stack direction="column">
+                <Box sx={{ width: "100px" }}>
+                  <Typography id="hue-slider">Hue</Typography>
+                  <Slider
+                    min={0}
+                    max={360}
+                    valueLabelDisplay="auto"
+                    value={hue}
+                    onChange={handleChangeHue}
+                  />
+                </Box>
+                <Box>
+                  <Typography id="color-slider">Colorful</Typography>
+                  <Slider
+                    valueLabelDisplay="auto"
+                    value={saturation}
+                    onChange={handleChangeSaturation}
+                  />
+                </Box>
+                <Box>
+                  <Typography id="hue-slider">Soft</Typography>
+                  <Slider
+                    defaultValue={70}
+                    valueLabelDisplay="auto"
+                    value={softness}
+                    onChange={handleChangeSoftness}
+                  />
+                </Box>
+              </Stack>
+            </Stack>
+          </DraggablePaper>
+        ) : null}
       </div>
-      {menuOpen ? (
-        <Menu
-          color={color}
-          setColor={setColor}
-          open={menuOpen}
-          handleClose={handleMenuClose}
-        />
-      ) : null}
-      <img
-        ref={ref}
-        src="/smol.png"
-        alt="music score to mark up"
-        style={imgStyle}
-        onDragStart={preventDragHandler}
+    </ThemeProvider>
+  );
+}
+
+function NiceStack(props) {
+  return (
+    <Stack direction={"row"} spacing={2}>
+      {props.children}
+    </Stack>
+  );
+}
+
+function Ball(props) {
+  const { hue, saturation, softness } = props;
+  // This reference gives us direct access to the THREE.Mesh object
+  const ref = useRef();
+  // Hold state for hovered and clicked events
+  const [hovered, hover] = useState(false);
+  const [clicked, click] = useState(false);
+  // Subscribe this component to the render-loop, rotate the mesh every frame
+  useFrame((state, delta) => {
+    if (ref.current && ref.current.rotation) {
+      ref.current.rotation.x += 0.01;
+    }
+  });
+
+  const scale = 0.8 + softness / 100 / 8;
+  // const transmission = softness / 100 / 2;
+  // Return the view, these are regular Threejs elements expressed in JSX
+  return (
+    <mesh
+      {...props}
+      ref={ref}
+      scale={scale}
+      onClick={(event) => click(!clicked)}
+      onPointerOver={(event) => hover(true)}
+      onPointerOut={(event) => hover(false)}
+    >
+      <icosahedronGeometry args={[2, 5]} />
+      <meshPhysicalMaterial
+        color={`hsl(${hue}, ${saturation}%, 70%)`}
+        roughness={0.8}
       />
-    </div>
+    </mesh>
+  );
+}
+
+function DraggablePaper(props) {
+  const { title, children, ...notChildren } = props;
+  return (
+    <Draggable
+      handle=".drag-me"
+      // cancel={'[class*="MuiDialogContent-root"]'}
+    >
+      <Paper
+        elevation={4}
+        {...notChildren}
+        className="p-2"
+        sx={{ width: "30rem" }}
+      >
+        <Stack
+          direction="row"
+          className="drag-me m-2"
+          spacing={2}
+          sx={{ cursor: "grab" }}
+        >
+          <DragHandleIcon />
+          <Typography variant="h6">{title}</Typography>
+        </Stack>
+        {children}
+      </Paper>
+    </Draggable>
   );
 }
 

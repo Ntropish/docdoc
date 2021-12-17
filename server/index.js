@@ -9,10 +9,12 @@ const state = {
   center: [0, 0],
   scale: 1,
   strokes: [],
+  folks: {},
 };
 
 io.on("connection", (socket) => {
-  const updateOthers = throttle(500, false, (movement) => {
+  console.log(socket);
+  const updateOthers = throttle(120, false, (movement) => {
     // sending to all clients except sender
     socket.broadcast.emit("state", state);
   });
@@ -24,9 +26,16 @@ io.on("connection", (socket) => {
     state.center[0] -= mx;
     state.center[1] -= my;
 
-    console.log(state, movement);
+    updateOthers();
+  });
+  socket.on("scale", (newScale) => {
+    state.scale = newScale;
 
-    // sending to all clients except sender
+    updateOthers();
+  });
+  socket.on("self", (self) => {
+    state.folks[socket.id] = self;
+
     updateOthers();
   });
 });

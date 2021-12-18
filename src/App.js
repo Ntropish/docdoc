@@ -233,7 +233,7 @@ function App() {
           <img
             ref={ref}
             src="/pieza.png"
-            alt="music score to mark up"
+            alt="pieza"
             style={imgStyle}
             onDragStart={preventDragHandler}
           />

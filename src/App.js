@@ -222,9 +222,9 @@ function App() {
     }
   }
 
-  const lines = state.lines.map((line) => {
-    return <line></line>;
-  });
+  // const lines = state.lines.map((line) => {
+  //   return <line></line>;
+  // });
 
   return (
     <ThemeProvider theme={theme}>
@@ -237,12 +237,12 @@ function App() {
             style={imgStyle}
             onDragStart={preventDragHandler}
           />
-          <svg>{lines}</svg>
+          {/* <svg>{lines}</svg> */}
         </div>
-        <div className="absolute top-0 right-0">
+        {/* <div className="absolute top-0 right-0">
           {JSON.stringify(state, null, 2)}
-        </div>
-        <IconButton
+        </div> */}
+        {/* <IconButton
           size="large"
           edge="start"
           color="inherit"
@@ -251,8 +251,8 @@ function App() {
           onClick={toggleMenu}
         >
           <MenuIcon />
-        </IconButton>
-        {menuOpen ? (
+        </IconButton> */}
+        {/* {menuOpen ? (
           <DraggablePaper title="How Would You Describe Yourself?">
             <Stack direction="row" spacing={3} justifyContent="center">
               <Box sx={{ width: "120px" }}>
@@ -292,7 +292,7 @@ function App() {
           dragToLook={true}
           movementSpeed={3.0}
           rollSpeed={0.5}
-        /> */}
+        /> 
                   <ambientLight intensity={0.7} />
                   <pointLight position={[-200, 200, 100]} />
                   <Ball hue={hue} saturation={saturation} softness={softness} />
@@ -303,7 +303,7 @@ function App() {
                       luminanceSmoothing={0.9}
                       height={70}
                     />
-                    {/* <Vignette eskil={false} offset={0.1} darkness={1.1} /> */}
+                    {/* <Vignette eskil={false} offset={0.1} darkness={1.1} /> 
                   </EffectComposer>
                 </Canvas>
               </Box>
@@ -327,7 +327,7 @@ function App() {
               </ToggleButtonGroup>
             </Stack>
           </DraggablePaper>
-        ) : null}
+        ) : null} */}
       </div>
     </ThemeProvider>
   );

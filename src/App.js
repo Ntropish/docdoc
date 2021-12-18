@@ -232,7 +232,7 @@ function App() {
         <div {...bind()} className="absolute inset-0 touch-none">
           <img
             ref={ref}
-            src="/smol.png"
+            src="/pieza.png"
             alt="music score to mark up"
             style={imgStyle}
             onDragStart={preventDragHandler}

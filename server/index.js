@@ -1,9 +1,16 @@
 const { Server } = require("socket.io");
 const { throttle } = require("throttle-debounce");
 
-const io = new Server({
-  /* options */
-});
+const express = require("express");
+
+const http = require("http");
+const app = express();
+
+app.use(express.static("build"));
+app.use(express.static("public"));
+
+const server = http.createServer(app);
+const io = new Server(server);
 
 const state = {
   center: [300, 300],
@@ -39,4 +46,8 @@ io.on("connection", (socket) => {
   });
 });
 
-io.listen(3050);
+const PORT = process.env.PORT || 3000;
+
+server.listen(PORT, () => {
+  console.log("listening on *:" + PORT);
+});
